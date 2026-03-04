@@ -1,0 +1,53 @@
+name: placemate
+description: "A new Flutter project."
+
+# Prevents accidental publishing to pub.dev
+publish_to: 'none'
+
+# App version
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # iOS-style icons
+  cupertino_icons: ^1.0.8
+
+  # Lottie animations
+  lottie: ^2.2.0
+
+  # HTTP requests / APIs
+  http: ^1.1.0
+
+  # State management
+  provider: ^6.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Recommended lints
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Assets example (uncomment if needed)
+  # assets:
+  #   - assets/images/
+  #   - assets/lottie/
+
+  # Fonts example (uncomment if needed)
+  # fonts:
+  #   - family: Poppins
+  #     fonts:
+  #       - asset: fonts/Poppins-Regular.ttf
+  #       - asset: fonts/Poppins-Bold.ttf
+  #         weight: 700
+  assets:
+    - assets/lottie/loading.json
+    - assets/lottie/Study Abroad.json

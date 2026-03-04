@@ -1,0 +1,154 @@
+import 'package:flutter/material.dart';
+import 'AIProcessingScreen.dart';
+import 'PlacementListScreen.dart';
+import 'SettingsPage.dart';
+import 'StudentsPageC.dart';
+
+class CoordinatorDashboard extends StatefulWidget {
+  final String email;
+  const CoordinatorDashboard({super.key, required this.email});
+
+  @override
+  State<CoordinatorDashboard> createState() => _CoordinatorDashboardState();
+}
+
+class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
+  int _selectedIndex = 0;
+  String get coordinatorName {
+    try {
+      String namePart = widget.email.split('@')[0];
+      return "Mr. " + namePart.split('.').map((s) => s[0].toUpperCase() + s.substring(1)).join(' ');
+    } catch (e) {
+      return "Mr. Coordinator";
+    }
+  }
+
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const PlacementListScreen(), // Index 0
+      const StudentsPage(),        // Index 1
+      const AIProcessingScreen(),  // Index 2
+      const SettingsPage(),        // Index 3
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      /// --- COMMON APP BAR (BOLD) ---
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.group_outlined, size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                            "Coordinator",
+                            style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12
+                            )
+                        ),
+                      ],
+                    ),
+                    Text(
+                        "Dashboard", // Changed to "Dashboard" for consistency
+                        style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold
+                        )
+                    ),
+                  ],
+                ),
+
+                /// --- CLICKABLE PROFILE TAG ---
+                _profileTag(theme),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: _buildBottomNav(theme),
+    );
+  }
+
+  /// --- UI HELPER: CLICKABLE PROFILE TAG ---
+  Widget _profileTag(ThemeData theme) {
+    return GestureDetector(
+      // Tapping the tag switches to index 3 (SettingsPage)
+      onTap: () {
+        setState(() {
+          _selectedIndex = 3;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text(
+                    "Profile",
+                    style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)
+                ),
+                Text(
+                    coordinatorName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)
+                ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+              child: Text(
+                  coordinatorName.split(' ').last[0],
+                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(ThemeData theme) {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: (index) => setState(() => _selectedIndex = index),
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: theme.colorScheme.primary,
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
+        BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Students'),
+        BottomNavigationBarItem(icon: Icon(Icons.smart_toy_outlined), label: 'AI'),
+        BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+      ],
+    );
+  }
+}
