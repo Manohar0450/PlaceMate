@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class PlacementCard extends StatefulWidget {
+  final Map<String, dynamic> studentData;
   final String company;
   final String role;
   final String lpa;
   final bool isEligible;
+  final bool alreadyApplied; // New property to track state from parent
 
   const PlacementCard({
     super.key,
+    required this.studentData,
     required this.company,
     required this.role,
     required this.lpa,
     required this.isEligible,
+    this.alreadyApplied = false,
   });
 
   @override
@@ -19,22 +25,49 @@ class PlacementCard extends StatefulWidget {
 }
 
 class _PlacementCardState extends State<PlacementCard> {
-  bool _isApplied = false;
+  late bool _isApplied;
+  bool _isSubmitting = false;
 
-  void _handleApply() {
-    if (!widget.isEligible || _isApplied) return;
+  @override
+  void initState() {
+    super.initState();
+    _isApplied = widget.alreadyApplied;
+  }
 
-    setState(() {
-      _isApplied = true;
-    });
+  // --- API CALL: Submit Application ---
+  Future<void> _handleApply() async {
+    if (!widget.isEligible || _isApplied || _isSubmitting) return;
 
-    // Optional: Show a success snackbar
+    setState(() => _isSubmitting = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse("https://placemate-backend-coral.vercel.app/apply-job"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "rollId": widget.studentData['rollId'],
+          "studentName": widget.studentData['name'],
+          "companyName": widget.company,
+          "role": widget.role,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        setState(() {
+          _isApplied = true;
+          _isSubmitting = false;
+        });
+        _showSnackBar("Applied successfully to ${widget.company}!", Colors.green);
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      _showSnackBar("Connection failed. Try again.", Colors.red);
+    }
+  }
+
+  void _showSnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Successfully applied to ${widget.company}!"),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -48,20 +81,29 @@ class _PlacementCardState extends State<PlacementCard> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.company,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  Text("${widget.role}    ${widget.lpa}",
-                      style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.company,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text("${widget.role}  •  ${widget.lpa}",
+                        style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
               ),
               _statusBadge(widget.isEligible),
             ],
@@ -70,28 +112,33 @@ class _PlacementCardState extends State<PlacementCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.business_center_outlined, size: 16, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text("Hiring now", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Icon(Icons.business_center_outlined, size: 16, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  const Text("Hiring now",
+                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
                 ],
               ),
               SizedBox(
-                width: 120,
+                width: 130,
                 child: ElevatedButton(
                   onPressed: widget.isEligible ? _handleApply : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isApplied ? Colors.green : const Color(0xFF3B82F6),
-                    disabledBackgroundColor: Colors.grey.withOpacity(0.2),
+                    backgroundColor: _isApplied ? Colors.green : theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
                   ),
-                  child: Row(
+                  child: _isSubmitting
+                      ? const SizedBox(height: 16, width: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_isApplied ? Icons.check_circle : Icons.check_circle_outline, size: 16),
+                      Icon(_isApplied ? Icons.check_circle : Icons.send_rounded, size: 16),
                       const SizedBox(width: 8),
-                      Text(_isApplied ? "Applied" : "Apply",
+                      Text(_isApplied ? "Done" : "Apply",
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
@@ -112,55 +159,143 @@ class _PlacementCardState extends State<PlacementCard> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        eligible ? "Eligible" : "Not eligible",
+        eligible ? "Eligible" : "Ineligible",
         style: TextStyle(
           color: eligible ? Colors.green : Colors.red,
           fontWeight: FontWeight.bold,
-          fontSize: 12,
+          fontSize: 11,
         ),
       ),
     );
   }
 }
-class ApplyPage extends StatelessWidget {
-  const ApplyPage({super.key});
+
+class ApplyPage extends StatefulWidget {
+  final Map<String, dynamic> studentData;
+  const ApplyPage({super.key, required this.studentData});
+
+  @override
+  State<ApplyPage> createState() => _ApplyPageState();
+}
+class _ApplyPageState extends State<ApplyPage> {
+  final String baseUrl = "https://placemate-backend-coral.vercel.app";
+  List<dynamic> allPlacements = [];
+  List<dynamic> filteredPlacements = [];
+  List<String> userAppliedCompanies = []; // Track where user already applied
+  bool isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPageData();
+  }
+
+  // --- INITIAL LOAD: Get Placements + User Applications ---
+  Future<void> _loadPageData() async {
+    try {
+      // 1. Fetch Job Postings
+      final jobRes = await http.get(Uri.parse("$baseUrl/all-placements"));
+
+      // 2. Fetch User's existing applications to mark cards as "Done"
+      final appRes = await http.get(Uri.parse("$baseUrl/my-applications/${widget.studentData['rollId']}"));
+
+      if (jobRes.statusCode == 200 && appRes.statusCode == 200) {
+        final List apps = jsonDecode(appRes.body);
+        setState(() {
+          allPlacements = jsonDecode(jobRes.body);
+          filteredPlacements = allPlacements;
+          userAppliedCompanies = apps.map((a) => a['companyName'].toString()).toList();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _filterResults(String query) {
+    setState(() {
+      filteredPlacements = allPlacements.where((p) {
+        final company = p['company'].toString().toLowerCase();
+        final role = p['role'].toString().toLowerCase();
+        return company.contains(query.toLowerCase()) || role.contains(query.toLowerCase());
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Apply placements",
-                  style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-              const Text("Find your next role",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 20),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+          onRefresh: _loadPageData,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Apply placements",
+                    style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                const Text("Find your next role",
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 20),
 
-              // Search Bar
-              TextField(
-                decoration: InputDecoration(
-                  hintText: "Search company, role",
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
+                // --- SEARCH BAR ---
+                TextField(
+                  controller: _searchController,
+                  onChanged: _filterResults,
+                  decoration: InputDecoration(
+                    hintText: "Search company, role",
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
+                      _searchController.clear();
+                      _filterResults("");
+                    })
+                        : null,
+                    filled: true,
+                    fillColor: theme.cardColor,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Placement List
-              const PlacementCard(company: "Ever UP Time", role: "Frontend Intern", lpa: "20 LPA", isEligible: true),
-              const PlacementCard(company: "Stats", role: "Data Analyst", lpa: "69 LPA", isEligible: true),
-              const PlacementCard(company: "24/7", role: " NON VOICE", lpa: "19 LPA", isEligible: false),
-              const PlacementCard(company: "TTEC", role: "NON VOICE", lpa: "12 LPA", isEligible: true),
-            ],
+                if (filteredPlacements.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 50),
+                      child: Column(
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text("No matching roles found.", style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // --- DYNAMIC LIST ---
+                ...filteredPlacements.map((p) => PlacementCard(
+                  studentData: widget.studentData,
+                  company: p['company'] ?? "Unknown",
+                  role: p['role'] ?? "N/A",
+                  lpa: p['lpa'] ?? "TBD",
+                  // Ineligible if Risk is High
+                  isEligible: widget.studentData['risk'] != "High",
+                  // Pass whether user already applied
+                  alreadyApplied: userAppliedCompanies.contains(p['company']),
+                )),
+              ],
+            ),
           ),
         ),
       ),

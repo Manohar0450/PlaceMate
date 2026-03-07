@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-
 class DevelopmentTeamPage extends StatelessWidget {
   const DevelopmentTeamPage({super.key});
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -49,7 +47,7 @@ class DevelopmentTeamPage extends StatelessWidget {
 
             _devCard(
               theme,
-              name: "Krishna teja",
+              name: "Manohar Nallamsetty",
               role: "Backend Developer",
               email: "nskmanohar242005@gmail.com",
               icon: Icons.laptop_mac,

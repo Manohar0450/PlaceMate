@@ -1,14 +1,18 @@
-
 import 'package:flutter/material.dart';
-import 'StudentDashboard.dart';
-class StudentHomeScreen extends StatelessWidget {
 
-  final String name;
-  const StudentHomeScreen({super.key, required this.name});
+class StudentHomeScreen extends StatelessWidget {
+  final Map<String, dynamic> studentData; // RECEIVED: Full data from login
+
+  const StudentHomeScreen({super.key, required this.studentData});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Extracting dynamic data from the map
+    String name = studentData['name'] ?? "Student";
+    String dept = studentData['dept'] ?? "N/A";
+    String risk = studentData['risk'] ?? "Low";
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -26,13 +30,16 @@ class StudentHomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Student dashboard", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                const Text("Your placement status", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const Row(
+                Text("$dept Department",
+                    style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
+                const Text("Your placement status",
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Row(
                   children: [
-                    Text("Eligibility: ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                    Text("Eligible", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text("Risk Level: ",
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    _riskText(risk), // Dynamic Risk display
                   ],
                 ),
               ],
@@ -40,7 +47,7 @@ class StudentHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          /// Stats Grid (Applied, Attended, Placed, Eligible)
+          /// Stats Grid
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -51,7 +58,7 @@ class StudentHomeScreen extends StatelessWidget {
             children: [
               _statTile(theme, "Applied", "5"),
               _statTile(theme, "Attended", "3"),
-              _statTile(theme, "Placed", "1"),
+              _statTile(theme, "Shortlisted", "1"), // Updated from "Placed" for realism
               _statTile(theme, "Eligible", "Yes"),
             ],
           ),
@@ -67,17 +74,27 @@ class StudentHomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("This week", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text("Recent Activity",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 20),
-                _activityRow(theme, Icons.verified_user_outlined, "Profile verified", Colors.blue),
-                _activityRow(theme, Icons.calendar_today_outlined, "Interview scheduled", Colors.indigo),
-                _activityRow(theme, Icons.business_center_outlined, "New placement matched", Colors.blue),
-                _activityRow(theme, Icons.check_circle_outline, "Applied successfully", Colors.blue),
+                _activityRow(theme, Icons.verified_user_outlined, "Account verified", Colors.blue),
+                _activityRow(theme, Icons.warning_amber_rounded, "Risk updated by Coordinator", Colors.orange),
+                _activityRow(theme, Icons.business_center_outlined, "New placement matched", Colors.teal),
+                _activityRow(theme, Icons.check_circle_outline, "Applied successfully", Colors.green),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Helper to color-code the Risk Level text
+  Widget _riskText(String level) {
+    Color color = level == 'High' ? Colors.red : level == 'Medium' ? Colors.orange : Colors.green;
+    return Text(
+      level,
+      style: TextStyle(color: color, fontWeight: FontWeight.bold),
     );
   }
 
@@ -91,7 +108,7 @@ class StudentHomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
           const Spacer(),
           Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
         ],
@@ -101,25 +118,21 @@ class StudentHomeScreen extends StatelessWidget {
 
   Widget _activityRow(ThemeData theme, IconData icon, String label, Color iconColor) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
-          borderRadius: BorderRadius.circular(20),
+          color: theme.scaffoldBackgroundColor.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             ),
-            const SizedBox(width: 16),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
       ),

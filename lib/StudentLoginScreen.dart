@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http; // ADDED
+import 'dart:convert'; // ADDED
 import 'StudentDashboard.dart';
-import 'LoadingScreen.dart'; // Ensure this matches your filename
+import 'LoadingScreen.dart';
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -11,56 +13,71 @@ class StudentLoginScreen extends StatefulWidget {
 
 class _StudentLoginScreenState extends State<StudentLoginScreen> {
   bool obscure = true;
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _idController = TextEditingController(); // Changed from Email to Roll ID
   final TextEditingController _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _idController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // --- UPDATED ASYNC LOGIN LOGIC ---
+  // --- UPDATED: REAL API LOGIN LOGIC ---
   void _handleLogin() async {
-    String email = _emailController.text.trim();
+    String rollId = _idController.text.trim();
     String password = _passwordController.text;
 
-    // Rule 1: Email must end with @gmail.com
-    bool isGmail = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@gmail\.com$").hasMatch(email);
-
-    // Rule 2: Password - 1 Upper, 1 Lower, 1 Number, 1 Special Character
-    bool isPasswordStrong = RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$&*~]).{8,}$').hasMatch(password);
-
-    if (!isGmail) {
-      _showError("Please use a valid @gmail.com address.");
-      return; // Stop if invalid
+    if (rollId.isEmpty || password.isEmpty) {
+      _showError("Please enter your Roll ID and Password.");
+      return;
     }
 
-    if (!isPasswordStrong) {
-      _showError("Password needs 1 uppercase, 1 lowercase, 1 number, and 1 special character.");
-      return; // Stop if invalid
-    }
-
-    // 1. Show the Loading Dialog overlay
+    // 1. Show the Loading Dialog
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevents user from clicking away during loading
+      barrierDismissible: false,
       builder: (context) => const LoadingScreen(message: "Verifying Student..."),
     );
 
-    // 2. Wait for 3 seconds
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      // 2. API Call to Vercel
+      final url = Uri.parse('https://placemate-backend-coral.vercel.app/student/login');
 
-    // 3. Remove Loader and Navigate
-    if (mounted) {
-      Navigator.pop(context); // Close the dialog
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => StudentDashboard(email: email),
-        ),
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "rollId": rollId,
+          "password": password,
+        }),
       );
+
+      // Remove Loader
+      if (mounted) Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        // SUCCESS
+        final responseData = jsonDecode(response.body);
+        final student = responseData['student'];
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentDashboard(studentData: student),
+            ),
+          );
+        }
+      } else {
+        // ERROR FROM BACKEND
+        final errorData = jsonDecode(response.body);
+        _showError(errorData['error'] ?? "Login failed. Check your credentials.");
+      }
+    } catch (e) {
+      // CONNECTION ERROR
+      if (mounted) Navigator.pop(context);
+      _showError("Connection failed. Check your internet.");
     }
   }
 
@@ -81,55 +98,57 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
     return Scaffold(
       body: Center(
-        child: _card(
-          context,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Welcome back", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Change", style: TextStyle(fontWeight: FontWeight.bold)),
-                  )
-                ],
-              ),
-              Text("Sign in as Student", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-
-              _label("Email ID"),
-              _input(
-                context,
-                hint: "Enter your mail id",
-                icon: Icons.mail_outline,
-                controller: _emailController,
-              ),
-
-              _label("Password"),
-              _input(
-                context,
-                hint: "Enter your password",
-                icon: Icons.lock_outline,
-                obscure: obscure,
-                controller: _passwordController,
-                suffix: IconButton(
-                  icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                  onPressed: () => setState(() => obscure = !obscure),
+        child: SingleChildScrollView(
+          child: _card(
+            context,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Welcome back", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Change", style: TextStyle(fontWeight: FontWeight.bold)),
+                    )
+                  ],
                 ),
-              ),
+                Text("Sign in as Student", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
 
-              const SizedBox(height: 20),
-              _primaryButton(context, "Sign in", _handleLogin),
+                _label("Roll Number / ID"),
+                _input(
+                  context,
+                  hint: "Roll Number",
+                  icon: Icons.badge_outlined,
+                  controller: _idController,
+                ),
 
-              const SizedBox(height: 20),
-              Center(
-                child: Text("Forgot password? Contact Coordinator.",
-                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
-              )
-            ],
+                _label("Password"),
+                _input(
+                  context,
+                  hint: "Enter your password",
+                  icon: Icons.lock_outline,
+                  obscure: obscure,
+                  controller: _passwordController,
+                  suffix: IconButton(
+                    icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setState(() => obscure = !obscure),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                _primaryButton(context, "Sign in", _handleLogin),
+
+                const SizedBox(height: 20),
+                Center(
+                  child: Text("Forgot password? Contact Coordinator.",
+                      style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+                )
+              ],
+            ),
           ),
         ),
       ),
@@ -143,6 +162,7 @@ Widget _card(BuildContext context, {required Widget child}) {
   final theme = Theme.of(context);
   return Container(
     width: 380,
+    margin: const EdgeInsets.symmetric(horizontal: 16),
     padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
       color: theme.cardColor,

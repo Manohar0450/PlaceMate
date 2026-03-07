@@ -13,19 +13,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # iOS-style icons
   cupertino_icons: ^1.0.8
-
-  # Lottie animations
   lottie: ^2.2.0
-
-  # HTTP requests / APIs
   http: ^1.1.0
-
-  # State management
   provider: ^6.0.5
-
+  shared_preferences:
 dev_dependencies:
   flutter_test:
     sdk: flutter

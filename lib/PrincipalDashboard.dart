@@ -1,13 +1,17 @@
-
 import 'package:flutter/material.dart';
-// import 'PrincipalHomeScreen.dart'; // Ensure this matches your file name
 import 'CoordinatorsPage.dart';
 import 'RiskOverviewScreen.dart';
 import 'SettingsPage.dart';
 
 class PrincipalDashboard extends StatefulWidget {
-  final String email;
-  const PrincipalDashboard({super.key, required this.email});
+  final String name;
+  final String principalId;
+
+  const PrincipalDashboard({
+    super.key,
+    required this.name,
+    required this.principalId
+  });
 
   @override
   State<PrincipalDashboard> createState() => _PrincipalDashboardState();
@@ -16,28 +20,24 @@ class PrincipalDashboard extends StatefulWidget {
 class _PrincipalDashboardState extends State<PrincipalDashboard> {
   int _selectedIndex = 0;
 
-  // Extracts Name from Email (e.g., ananya.rao@college.edu -> Ananya Rao)
+  // Logic to handle display name if the email was passed instead of a full name
   String get principalName {
+    if (!widget.name.contains('@')) return widget.name;
     try {
-      String namePart = widget.email.split('@')[0];
+      String namePart = widget.name.split('@')[0];
       return namePart.split('.').map((s) => s[0].toUpperCase() + s.substring(1)).join(' ');
     } catch (e) {
       return "Dr. Ananya Rao";
     }
   }
 
-  late final List<Widget> _pages;
 
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      PrincipalHomeScreen(name: principalName), // Index 0
-      const CoordinatorsPage(),                 // Index 1
-      const RiskOverviewScreen(),               // Index 2
-      const SettingsPage(),                     // Index 3
-    ];
-  }
+  List<Widget> get _pages => [
+    PrincipalHomeScreen(name: principalName), // Index 0
+    CoordinatorsPage(currentPrincipalId: widget.principalId), // Index 1: ID PASSED HERE
+    const RiskOverviewScreen(),               // Index 2
+    const SettingsPage(),                     // Index 3
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +55,6 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Role Indicator
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -75,13 +74,11 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> {
                       ],
                     ),
                     Text(
-                      "Dashboard", // Changed from "Principal" to "Dashboard" for clarity
+                      "Dashboard",
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
-
-                /// --- CLICKABLE PROFILE TAG ---
                 _profileTag(theme),
               ],
             ),
@@ -125,15 +122,9 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> {
     );
   }
 
-  /// --- UI HELPER: CLICKABLE PROFILE TAG ---
   Widget _profileTag(ThemeData theme) {
     return GestureDetector(
-      // Tapping this switches the selected index to Settings (3)
-      onTap: () {
-        setState(() {
-          _selectedIndex = 3;
-        });
-      },
+      onTap: () => setState(() => _selectedIndex = 3),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -161,7 +152,7 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> {
               radius: 18,
               backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
               child: Text(
-                principalName[0],
+                principalName.isNotEmpty ? principalName[0] : "P",
                 style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
               ),
             )
@@ -171,6 +162,8 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> {
     );
   }
 }
+
+// Keep your PrincipalHomeScreen class exactly as it is below...
 class PrincipalHomeScreen extends StatelessWidget {
   final String name;
   const PrincipalHomeScreen({super.key, required this.name});
@@ -257,17 +250,17 @@ class PrincipalHomeScreen extends StatelessWidget {
             /// Stats Grid
             Row(
               children: [
-                Expanded(child: _statCard(theme, "Placed", "100", "+8%")),
+                Expanded(child: _statCard(theme, "Placed", "0", "0")),
                 const SizedBox(width: 16),
-                Expanded(child: _statCard(theme, "Eligible", "518", "+3%")),
+                Expanded(child: _statCard(theme, "Eligible", "0", "0%")),
               ],
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _statCard(theme, "At risk", "64", "-2%", isNegative: true)),
+                Expanded(child: _statCard(theme, "At risk", "0", "0%", isNegative: true)),
                 const SizedBox(width: 16),
-                Expanded(child: _statCard(theme, "Companies", "42", "+5")),
+                Expanded(child: _statCard(theme, "Companies", "0", "0")),
               ],
             ),
 
@@ -293,10 +286,10 @@ class PrincipalHomeScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _pipelineRow("Applied", 441, 1.0, theme),
-                  _pipelineRow("Attended", 296, 0.7, theme),
-                  _pipelineRow("Offered", 178, 0.45, theme),
-                  _pipelineRow("Placed", 150, 0.40, theme),
+                  _pipelineRow("Applied", 0, 0, theme),
+                  _pipelineRow("Attended", 0, 0, theme),
+                  _pipelineRow("Offered", 0, 0, theme),
+                  _pipelineRow("Placed", 0, 0, theme),
                 ],
               ),
             ),

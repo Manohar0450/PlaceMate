@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'StudentHomeScreen.dart';
-// import 'ApplyPage.dart';
-import 'PlacementCard.dart';// Ensure this matches your file name
-import 'SPlacementsPage.dart'; // Ensure this matches your file name
+import 'SPlacementsPage.dart';
 import 'SettingsPage.dart';
+import 'package:placemate/PlacementCard.dart'; // Ensure this file exists and takes studentData
 
 class StudentDashboard extends StatefulWidget {
-  final String email;
-  const StudentDashboard({super.key, required this.email});
+  final Map<String, dynamic> studentData;
+
+  const StudentDashboard({super.key, required this.studentData});
 
   @override
   State<StudentDashboard> createState() => _StudentDashboardState();
@@ -16,36 +16,24 @@ class StudentDashboard extends StatefulWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   int _selectedIndex = 0;
 
-  // Logic to extract name from email (e.g., aditi.sharma@gmail.com -> Aditi Sharma)
-  String get studentName {
-    try {
-      String namePart = widget.email.split('@')[0];
-      return namePart.split('.').map((s) => s[0].toUpperCase() + s.substring(1)).join(' ');
-    } catch (e) {
-      return "Student";
-    }
-  }
+  // Real-time getters for data from the Map
+  String get studentName => widget.studentData['name'] ?? "Student";
+  String get studentId => widget.studentData['rollId'] ?? "0000";
 
-  // The pages list is initialized in initState to pass the studentName
-  late final List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      StudentHomeScreen(name: studentName), // Dashboard Index 0
-      const ApplyPage(),                   // Apply Index 1
-      const PlacementsPage(),              // Placements Index 2
-      const SettingsPage(),                // Settings Index 3
-    ];
-  }
+  // Pages list using the getter to pass data and maintain state
+  List<Widget> get _pages => [
+    StudentHomeScreen(studentData: widget.studentData), // Tab 0
+    ApplyPage(studentData: widget.studentData),         // Tab 1: Now integrated
+    const SPlacementsPage(),                            // Tab 2: Live Job List
+    const SettingsPage(),                               // Tab 3: Settings
+  ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      /// --- SHARED APPBAR ---
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(100),
         child: SafeArea(
@@ -58,57 +46,69 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.school_outlined, size: 16, color: Colors.teal),
-                        SizedBox(width: 4),
-                        Text("Student",
-                            style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 12)),
+                        const Icon(Icons.school_outlined, size: 16, color: Colors.teal),
+                        const SizedBox(width: 4),
+                        Text(
+                            "ID: $studentId",
+                            style: const TextStyle(
+                                color: Colors.teal,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12
+                            )
+                        ),
                       ],
                     ),
-                    Text("Dashboard",
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                        "Dashboard",
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
+                    ),
                   ],
                 ),
-
-                /// --- CLICKABLE PROFILE TAG ---
                 _profileTag(theme),
               ],
             ),
           ),
         ),
       ),
-
-      /// --- DYNAMIC BODY ---
       body: _pages[_selectedIndex],
-
-      /// --- BOTTOM NAVIGATION BAR ---
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: theme.colorScheme.primary,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Apply'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: 'Placements'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Settings'),
-        ],
-      ),
+      bottomNavigationBar: _buildBottomNav(theme),
     );
   }
 
-  /// --- UI HELPER: PROFILE TAG ---
+  Widget _buildBottomNav(ThemeData theme) {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: (index) => setState(() => _selectedIndex = index),
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: theme.colorScheme.primary,
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+      items: const [
+        BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view_rounded),
+            label: 'Dashboard'
+        ),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.send_outlined),
+            label: 'Apply'
+        ),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.business_center_outlined),
+            label: 'Placements'
+        ),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings'
+        ),
+      ],
+    );
+  }
+
   Widget _profileTag(ThemeData theme) {
     return GestureDetector(
-      // Tapping the profile tag sets index to 3 (Settings Page)
-      onTap: () {
-        setState(() {
-          _selectedIndex = 3;
-        });
-      },
+      onTap: () => setState(() => _selectedIndex = 3),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -121,18 +121,27 @@ class _StudentDashboardState extends State<StudentDashboard> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text("Profile",
-                    style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text(studentName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text(
+                    "Profile",
+                    style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)
+                ),
+                Text(
+                    studentName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)
+                ),
               ],
             ),
             const SizedBox(width: 10),
             CircleAvatar(
               radius: 18,
               backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-              child: Text(studentName[0],
-                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+              child: Text(
+                  studentName.isNotEmpty ? studentName[0].toUpperCase() : "S",
+                  style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold
+                  )
+              ),
             )
           ],
         ),

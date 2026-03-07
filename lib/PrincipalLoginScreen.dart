@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'PrincipalRegistrationScreen.dart';
+import 'package:http/http.dart' as http; // Required for API calls
+import 'dart:convert'; // Required for JSON handling
+// import 'PrincipalRegisterScreen.dart';
+import 'package:placemate/PrincipalRegistrationScreen.dart';
 import 'PrincipalDashboard.dart';
-import 'LoadingScreen.dart'; // Ensure this matches your filename
+import 'LoadingScreen.dart';
 
 class PrincipalLoginScreen extends StatefulWidget {
   const PrincipalLoginScreen({super.key});
@@ -22,49 +25,77 @@ class _PrincipalLoginScreenState extends State<PrincipalLoginScreen> {
     super.dispose();
   }
 
-  // --- UPDATED VALIDATION & NAVIGATION LOGIC ---
-  void _handleLogin() async {
+  // --- API LOGIN LOGIC ---
+  Future<void> _handleLogin() async {
     String email = _emailController.text.trim();
     String password = _passwordController.text;
 
-    // Rule 1: Email must end with @
-    // ege.edu
+    // Validation
     bool isCollegeEmail = RegExp(r"^[a-zA-Z0-9.]+@gmail\.com$").hasMatch(email);
-
-    // Rule 2: 1 Upper, 1 Lower, 1 Number, 1 Special Character
     bool isPasswordStrong = RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$&*~]).{8,}$').hasMatch(password);
 
     if (!isCollegeEmail) {
       _showError("Please use a valid @gmail.com address.");
-      return; // Stop execution if validation fails
+      return;
     }
 
     if (!isPasswordStrong) {
-      _showError("Password must have 1 uppercase, 1 lowercase, 1 number, and 1 special character.");
-      return; // Stop execution if validation fails
+      _showError("Invalid password format.");
+      return;
     }
 
     // 🔹 1. Show the Loading Dialog
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevents user from dismissing the loader
-      builder: (context) => const LoadingScreen(message: "Accessing Analytics..."),
+      barrierDismissible: false,
+      builder: (context) => const LoadingScreen(message: "Verifying Credentials..."),
     );
 
-    // 🔹 2. Wait for 3 seconds
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      // 🔹 2. API Call to Vercel
+      final url = Uri.parse('https://placemate-backend-coral.vercel.app/login');
 
-    // 🔹 3. Navigate to Dashboard
-    if (mounted) {
-      Navigator.pop(context); // Remove the loading dialog first
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PrincipalDashboard(
-            email: email.isEmpty ? "Principal" : email,
-          ),
-        ),
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+        }),
       );
+
+      // Remove the loading dialog
+      if (mounted) Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        // SUCCESS
+        final responseData = jsonDecode(response.body);
+
+        // 🔹 UPDATED: Extract both Name and the MongoDB _id
+        String principalName = responseData['principal']['name'] ?? "Principal";
+        String principalId = responseData['principal']['_id'] ?? "";
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PrincipalDashboard(
+                name: principalName,
+                principalId: principalId,
+                // 🔹 Passing ID to Dashboard
+              ),
+            ),
+          );
+        }
+      } else {
+        // ERROR FROM BACKEND
+        final errorData = jsonDecode(response.body);
+        _showError(errorData['error'] ?? "Login failed. Please check credentials.");
+      }
+    } catch (e) {
+      // CONNECTION ERROR
+      if (mounted) Navigator.pop(context);
+      _showError("Cannot connect to server. Ensure your backend is live.");
     }
   }
 
@@ -85,77 +116,80 @@ class _PrincipalLoginScreenState extends State<PrincipalLoginScreen> {
 
     return Scaffold(
       body: Center(
-        child: _card(
-          context,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Welcome back",
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Change", style: TextStyle(fontWeight: FontWeight.w900)),
-                  )
-                ],
-              ),
-              const Text("Sign in as Principal",
-                  style: TextStyle(fontWeight: FontWeight.w900, color: Colors.grey)),
-              const SizedBox(height: 24),
-
-              _label("Email ID"),
-              _input(
-                context,
-                hint: "Enter your mail id",
-                icon: Icons.mail_outline,
-                controller: _emailController,
-              ),
-
-              _label("Password"),
-              _input(
-                context,
-                hint: "Enter your password",
-                icon: Icons.lock_outline,
-                obscure: obscure,
-                controller: _passwordController,
-                suffix: IconButton(
-                  icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                  onPressed: () => setState(() => obscure = !obscure),
+        child: SingleChildScrollView(
+          child: _card(
+            context,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Welcome back",
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Change", style: TextStyle(fontWeight: FontWeight.w900)),
+                    )
+                  ],
                 ),
-              ),
+                const Text("Sign in as Principal",
+                    style: TextStyle(fontWeight: FontWeight.w900, color: Colors.grey)),
+                const SizedBox(height: 24),
 
-              const SizedBox(height: 20),
-              _primaryButton(context, "Sign in", _handleLogin),
-
-              const SizedBox(height: 12),
-              _secondaryButton(context, "Register as Principal", () {
-                Navigator.push(
+                _label("Email ID"),
+                _input(
                   context,
-                  MaterialPageRoute(builder: (_) => const PrincipalRegisterScreen()),
-                );
-              }),
+                  hint: "Enter your mail id",
+                  icon: Icons.mail_outline,
+                  controller: _emailController,
+                ),
 
-              const SizedBox(height: 20),
-              Center(
-                child: Text("Forgot password? Contact C7.",
-                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w900)),
-              )
-            ],
+                _label("Password"),
+                _input(
+                  context,
+                  hint: "Enter your password",
+                  icon: Icons.lock_outline,
+                  obscure: obscure,
+                  controller: _passwordController,
+                  suffix: IconButton(
+                    icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setState(() => obscure = !obscure),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                _primaryButton(context, "Sign in", _handleLogin),
+
+                const SizedBox(height: 12),
+                _secondaryButton(context, "Register as Principal", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrincipalRegisterScreen()),
+                  );
+                }),
+
+                const SizedBox(height: 20),
+                Center(
+                  child: Text("Forgot password? Contact C7.",
+                      style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w900)),
+                )
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // --- UI HELPERS ---
+  /* --- UI HELPERS (Unchanged) --- */
 
   Widget _card(BuildContext context, {required Widget child}) {
     final theme = Theme.of(context);
     return Container(
       width: 380,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.cardColor,

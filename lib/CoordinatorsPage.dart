@@ -1,48 +1,110 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class CoordinatorsPage extends StatefulWidget {
-  const CoordinatorsPage({super.key});
+  // 1. ADDED: Receive the Principal's ID to filter data
+  final String currentPrincipalId;
+
+  const CoordinatorsPage({super.key, required this.currentPrincipalId});
 
   @override
   State<CoordinatorsPage> createState() => _CoordinatorsPageState();
 }
 
 class _CoordinatorsPageState extends State<CoordinatorsPage> {
-  // The dynamic list of coordinators
-  final List<Map<String, String>> coordinators = [
-    {"name": "Suresh", "dept": "Aiml", "email": "suresh@gmail.com", "status": "Active"},
-    {"name": "Arjun Reddy", "dept": "Cse", "email": "arjun@gmail.com", "status": "Invited"},
-    {"name": "Sailaja", "dept": "IOT", "email": "sailaja@gmail.com", "status": "Active"},
-  ];
+  final String baseUrl = "https://placemate-backend-coral.vercel.app";
 
-  // Logic to remove a coordinator from the list
-  void _deleteCoordinator(int index) {
-    setState(() {
-      coordinators.removeAt(index);
-    });
+  List<dynamic> coordinators = [];
+  bool isLoading = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchCoordinators();
+  }
+
+  // 2. UPDATED: URL now includes principalId for isolation
+  Future<void> _fetchCoordinators() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/coordinators/${widget.currentPrincipalId}"),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          coordinators = jsonDecode(response.body);
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      _showSnackBar("Error loading coordinators", Colors.red);
+    }
+  }
+
+  // 3. UPDATED: Added 'createdBy' to the body
+  Future<void> _addCoordinatorToBackend(Map<String, String> newCoord) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/add-coordinator"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": newCoord['name'],
+          "email": newCoord['email'],
+          "dept": newCoord['dept'],
+          "password": newCoord['password'],
+          "createdBy": widget.currentPrincipalId, // Link to current principal
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        _fetchCoordinators();
+        _showSnackBar("Coordinator created successfully!", Colors.green);
+      } else {
+        final error = jsonDecode(response.body);
+        _showSnackBar(error['error'] ?? "Failed to create account", Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Backend connection failed", Colors.red);
+    }
+  }
+
+  Future<void> _deleteCoordinator(String id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl/coordinator/$id"),
+      );
+
+      if (response.statusCode == 200) {
+        _fetchCoordinators();
+        _showSnackBar("Coordinator removed", Colors.blueGrey);
+      }
+    } catch (e) {
+      _showSnackBar("Delete failed", Colors.red);
+    }
+  }
+
+  void _showSnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Coordinator removed"),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
       ),
     );
   }
 
-  // Logic to show the Add Coordinator sheet
   void _showAddSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddCoordinatorSheet(
-        onAdd: (newCoord) {
-          setState(() {
-            coordinators.insert(0, newCoord); // Adds to the top of the list
-          });
-        },
-      ),
+      builder: (context) {
+        return AddCoordinatorSheet(
+          onAdd: (data) => _addCoordinatorToBackend(data),
+        );
+      },
     );
   }
 
@@ -51,25 +113,29 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
     final theme = Theme.of(context);
 
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            /// Header Section
-            _buildHeader(context),
-            const SizedBox(height: 20),
-
-            /// Search Bar
-            _buildSearchBar(theme),
-            const SizedBox(height: 24),
-
-            /// Coordinator Cards
-            ...coordinators.asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, String> data = entry.value;
-              return _coordinatorCard(theme, data, index);
-            }),
-          ],
+      child: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+        onRefresh: _fetchCoordinators,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildHeader(context),
+              const SizedBox(height: 20),
+              _buildSearchBar(theme),
+              const SizedBox(height: 24),
+              if (coordinators.isEmpty)
+                const Text(
+                  "No coordinators found",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ...coordinators.map(
+                    (data) => _coordinatorCard(theme, data),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -77,36 +143,44 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
 
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text("Coordinator creation & management",
-              style: TextStyle(color: Colors.grey, fontSize: 12)),
-          Text("Coordinators",
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Coordinator creation & management",
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            Text(
+              "Coordinators",
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 fontSize: 26,
-              )),
-        ]),
+              ),
+            ),
+          ],
+        ),
         ElevatedButton.icon(
           onPressed: () => _showAddSheet(context),
-          icon: const Icon(Icons.person_add_alt_1, size: 18,),
+          icon: const Icon(Icons.person_add_alt_1, size: 18),
           label: const Text("Add"),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF3B82F6),
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
-        )
+        ),
       ],
     );
   }
 
-  Widget _coordinatorCard(ThemeData theme, Map<String, String> c, int index) {
-    bool isActive = c['status'] == "Active";
-
+  Widget _coordinatorCard(ThemeData theme, dynamic c) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -124,64 +198,46 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
       child: Row(
         children: [
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text(c['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(width: 8),
-                _statusBadge(c['status']!, isActive),
-              ]),
-              const SizedBox(height: 4),
-              Text("${c['dept']}    ${c['email']}",
-                  style: const TextStyle(color: Colors.grey, fontSize: 13)),
-            ]),
-          ),
-
-          /// Activate Button
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text("Activate"),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              side: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c['name'] ?? "No Name",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${c['dept']} • ${c['email']}",
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
-
-          /// Delete (Trash) Button
           IconButton(
-            onPressed: () => _deleteCoordinator(index),
-            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+            onPressed: () => _deleteCoordinator(c['_id']),
+            icon: const Icon(
+              Icons.delete_outline,
+              color: Colors.redAccent,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _statusBadge(String label, bool active) {
-    final color = active ? const Color(0xFF6C9EFF) : Colors.grey;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (active) Icon(Icons.check, size: 12, color: color),
-        if (active) const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-      ]),
-    );
-  }
-
   Widget _buildSearchBar(ThemeData theme) {
     return TextField(
       decoration: InputDecoration(
-        hintText: "Search by name, dept, email",
-        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+        hintText: "Search coordinators...",
+        prefixIcon: const Icon(Icons.search),
         filled: true,
         fillColor: theme.cardColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -191,11 +247,19 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
   }
 }
 
-/* ------------------- Add Coordinator Sheet Widget ------------------- */
+/* ---------------- ADD COORDINATOR SHEET ---------------- */
 
-class AddCoordinatorSheet extends StatelessWidget {
+class AddCoordinatorSheet extends StatefulWidget {
   final Function(Map<String, String>) onAdd;
-  AddCoordinatorSheet({super.key, required this.onAdd});
+
+  const AddCoordinatorSheet({super.key, required this.onAdd});
+
+  @override
+  State<AddCoordinatorSheet> createState() => _AddCoordinatorSheetState();
+}
+
+class _AddCoordinatorSheetState extends State<AddCoordinatorSheet> {
+  final _formKey = GlobalKey<FormState>();
 
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -205,77 +269,169 @@ class AddCoordinatorSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Container(
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 32,
+        left: 24,
+        right: 24,
+        top: 32,
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(32),
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text("Add Coordinator",
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-          ]),
-          const SizedBox(height: 24),
-          _field("Name", _name, Icons.person_outline),
-          _field("Email Address", _email, Icons.mail_outline),
-          _field("Branch / Department", _branch, Icons.apartment),
-          _field("Assign Password", _pass, Icons.lock_outline, isPass: true),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_name.text.isNotEmpty) {
-                  onAdd({
-                    "name": _name.text,
-                    "dept": _branch.text,
-                    "email": _email.text,
-                    "status": "Invited",
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Add Coordinator",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              child: const Text("Create Coordinator Account",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
+              const SizedBox(height: 24),
+              _nameField(),
+              _emailField(),
+              _deptField(),
+              _passwordField(),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    "Create Coordinator Account",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _field(String label, TextEditingController ctrl, IconData icon, {bool isPass = false}) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-      const SizedBox(height: 8),
-      TextField(
-        controller: ctrl,
-        obscureText: isPass,
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, size: 20),
-          hintText: "Enter $label",
-          filled: true,
-          fillColor: Colors.grey.withOpacity(0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      widget.onAdd({
+        "name": _name.text.trim(),
+        "email": _email.text.trim(),
+        "dept": _branch.text.trim(),
+        "password": _pass.text,
+      });
+
+      Navigator.pop(context);
+    }
+  }
+
+  Widget _nameField() {
+    return _field(
+      "Name",
+      _name,
+      Icons.person,
+      validator: (v) {
+        if (v == null || v.isEmpty) return "Name required";
+        if (v.length < 6) return "Minimum 6 characters";
+        if (!RegExp(r'^[a-zA-Z ]+$').hasMatch(v)) return "Only letters allowed";
+        return null;
+      },
+    );
+  }
+
+  Widget _emailField() {
+    return _field(
+      "Email Address",
+      _email,
+      Icons.email,
+      validator: (v) {
+        if (v == null || v.isEmpty) return "Email required";
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return "Enter valid email";
+        return null;
+      },
+    );
+  }
+
+  Widget _deptField() {
+    return _field(
+      "Department",
+      _branch,
+      Icons.apartment,
+      validator: (v) {
+        if (v == null || v.isEmpty) return "Department required";
+        if (v.length < 3) return "Minimum 3 characters";
+        return null;
+      },
+    );
+  }
+
+  Widget _passwordField() {
+    return _field(
+      "Password",
+      _pass,
+      Icons.lock,
+      isPass: true,
+      validator: (v) {
+        if (v == null || v.isEmpty) return "Password required";
+        if (v.length < 6) return "Minimum 6 characters";
+        if (!RegExp(r'(?=.*[A-Z])').hasMatch(v)) return "Must contain uppercase letter";
+        if (!RegExp(r'(?=.*[a-z])').hasMatch(v)) return "Must contain lowercase letter";
+        if (!RegExp(r'(?=.*[0-9])').hasMatch(v)) return "Must contain number";
+        if (!RegExp(r'(?=.*[!@#$%^&*(),.?":{}|<>])').hasMatch(v)) return "Must contain special character";
+        return null;
+      },
+    );
+  }
+
+  Widget _field(
+      String label,
+      TextEditingController controller,
+      IconData icon, {
+        bool isPass = false,
+        String? Function(String?)? validator,
+      }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
-      ),
-      const SizedBox(height: 16),
-    ]);
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: isPass,
+          validator: validator,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, size: 20),
+            hintText: "Enter $label",
+            filled: true,
+            fillColor: Colors.grey.withOpacity(0.05),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 }
