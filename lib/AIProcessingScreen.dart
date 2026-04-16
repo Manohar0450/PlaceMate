@@ -18,7 +18,7 @@ class _AIProcessingScreenState extends State<AIProcessingScreen> {
   bool _isLoading = false;
   bool _isPostEnabled = false;
 
-  final String _apiKey = "AIzaSyAjLvp-EZNANWkSgzohbb6RZ6iCYqRF2UI";
+  final String _apiKey = "AIzaSyDmomiUFSaws7LpulD2_Ymg5OcnoSc-lXU";
   final String _baseUrl = "https://placemate-backend-coral.vercel.app";
 
   Future<void> _processWithGemini() async {

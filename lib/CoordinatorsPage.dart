@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class CoordinatorsPage extends StatefulWidget {
-  // 1. ADDED: Receive the Principal's ID to filter data
   final String currentPrincipalId;
 
   const CoordinatorsPage({super.key, required this.currentPrincipalId});
@@ -24,7 +24,6 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
     _fetchCoordinators();
   }
 
-  // 2. UPDATED: URL now includes principalId for isolation
   Future<void> _fetchCoordinators() async {
     try {
       final response = await http.get(
@@ -39,10 +38,10 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
       }
     } catch (e) {
       _showSnackBar("Error loading coordinators", Colors.red);
+      setState(() => isLoading = false);
     }
   }
 
-  // 3. UPDATED: Added 'createdBy' to the body
   Future<void> _addCoordinatorToBackend(Map<String, String> newCoord) async {
     try {
       final response = await http.post(
@@ -53,7 +52,7 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
           "email": newCoord['email'],
           "dept": newCoord['dept'],
           "password": newCoord['password'],
-          "createdBy": widget.currentPrincipalId, // Link to current principal
+          "createdBy": widget.currentPrincipalId,
         }),
       );
 
@@ -66,6 +65,25 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
       }
     } catch (e) {
       _showSnackBar("Backend connection failed", Colors.red);
+    }
+  }
+
+  Future<void> _updateCoordinatorInBackend(String id, Map<String, String> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/update-coordinator/$id"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode == 200) {
+        _fetchCoordinators();
+        _showSnackBar("Coordinator updated successfully!", Colors.blue);
+      } else {
+        _showSnackBar("Update failed", Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Connection failed", Colors.red);
     }
   }
 
@@ -94,15 +112,22 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
     );
   }
 
-  void _showAddSheet(BuildContext context) {
+  void _showCoordinatorSheet({dynamic coordinator}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return AddCoordinatorSheet(
-          onAdd: (data) => _addCoordinatorToBackend(data),
+        return CoordinatorFormSheet(
+          coordinator: coordinator,
+          onSave: (data) {
+            if (coordinator == null) {
+              _addCoordinatorToBackend(data);
+            } else {
+              _updateCoordinatorInBackend(coordinator['_id'], data);
+            }
+          },
         );
       },
     );
@@ -164,7 +189,7 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
           ],
         ),
         ElevatedButton.icon(
-          onPressed: () => _showAddSheet(context),
+          onPressed: () => _showCoordinatorSheet(),
           icon: const Icon(Icons.person_add_alt_1, size: 18),
           label: const Text("Add"),
           style: ElevatedButton.styleFrom(
@@ -220,6 +245,10 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
             ),
           ),
           IconButton(
+            onPressed: () => _showCoordinatorSheet(coordinator: c),
+            icon: const Icon(Icons.edit_note_rounded, color: Colors.blueAccent),
+          ),
+          IconButton(
             onPressed: () => _deleteCoordinator(c['_id']),
             icon: const Icon(
               Icons.delete_outline,
@@ -247,28 +276,48 @@ class _CoordinatorsPageState extends State<CoordinatorsPage> {
   }
 }
 
-/* ---------------- ADD COORDINATOR SHEET ---------------- */
+class CoordinatorFormSheet extends StatefulWidget {
+  final dynamic coordinator;
+  final Function(Map<String, String>) onSave;
 
-class AddCoordinatorSheet extends StatefulWidget {
-  final Function(Map<String, String>) onAdd;
-
-  const AddCoordinatorSheet({super.key, required this.onAdd});
+  const CoordinatorFormSheet({super.key, this.coordinator, required this.onSave});
 
   @override
-  State<AddCoordinatorSheet> createState() => _AddCoordinatorSheetState();
+  State<CoordinatorFormSheet> createState() => _CoordinatorFormSheetState();
 }
 
-class _AddCoordinatorSheetState extends State<AddCoordinatorSheet> {
+class _CoordinatorFormSheetState extends State<CoordinatorFormSheet> {
   final _formKey = GlobalKey<FormState>();
 
-  final _name = TextEditingController();
-  final _email = TextEditingController();
-  final _branch = TextEditingController();
-  final _pass = TextEditingController();
+  late TextEditingController _name;
+  late TextEditingController _email;
+  late TextEditingController _branch;
+  late TextEditingController _pass;
+
+  bool _isPasswordVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.coordinator?['name'] ?? "");
+    _email = TextEditingController(text: widget.coordinator?['email'] ?? "");
+    _branch = TextEditingController(text: widget.coordinator?['dept'] ?? "");
+    _pass = TextEditingController(text: widget.coordinator?['password'] ?? "");
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _branch.dispose();
+    _pass.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isEditing = widget.coordinator != null;
 
     return Container(
       padding: EdgeInsets.only(
@@ -289,15 +338,65 @@ class _AddCoordinatorSheetState extends State<AddCoordinatorSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Add Coordinator",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                isEditing ? "Edit Coordinator" : "Add Coordinator",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              _nameField(),
-              _emailField(),
-              _deptField(),
-              _passwordField(),
+
+              _field("Name", _name, Icons.person, validator: (v) {
+                if (v == null || v.isEmpty) return "Name required";
+                if (v.trim().length < 4) return "Name too short (min 4)";
+                return null;
+              }),
+
+              _field("Email Address", _email, Icons.email, validator: (v) {
+                if (v == null || v.isEmpty) return "Email required";
+                if (!v.contains('@')) return "Invalid email (missing @)";
+
+                // Rule: 4 chars before @ and 4 chars after @
+                List<String> parts = v.split('@');
+                if (parts.length != 2 || parts[0].length < 4 || parts[1].length < 4) {
+                  return "Need 4+ chars before and after @";
+                }
+                return null;
+              }),
+
+              _field("Department", _branch, Icons.apartment, validator: (v) {
+                if (v == null || v.isEmpty) return "Department required";
+                // Rule: Enough with 4 letters
+                if (v.trim().length < 4) return "Department must be 4+ letters";
+                return null;
+              }),
+
+              _field(
+                "Password",
+                _pass,
+                Icons.lock,
+                isPass: !_isPasswordVisible,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    size: 20,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return "Password required";
+                  // Rule: 1 Upper, 1 Lower, 1 Digit, 1 Special
+                  bool hasUpper = v.contains(RegExp(r'[A-Z]'));
+                  bool hasLower = v.contains(RegExp(r'[a-z]'));
+                  bool hasDigits = v.contains(RegExp(r'[0-9]'));
+                  bool hasSpecial = v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
+                  if (!hasUpper || !hasLower || !hasDigits || !hasSpecial) {
+                    return "Need: 1 Upper, 1 Lower, 1 Digit, 1 Special";
+                  }
+                  return null;
+                },
+              ),
+
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -306,16 +405,11 @@ class _AddCoordinatorSheetState extends State<AddCoordinatorSheet> {
                   onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B82F6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text(
-                    "Create Coordinator Account",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Text(
+                    isEditing ? "Update Account" : "Create Coordinator Account",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -328,92 +422,22 @@ class _AddCoordinatorSheetState extends State<AddCoordinatorSheet> {
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      widget.onAdd({
+      widget.onSave({
         "name": _name.text.trim(),
         "email": _email.text.trim(),
         "dept": _branch.text.trim(),
         "password": _pass.text,
       });
-
       Navigator.pop(context);
     }
   }
 
-  Widget _nameField() {
-    return _field(
-      "Name",
-      _name,
-      Icons.person,
-      validator: (v) {
-        if (v == null || v.isEmpty) return "Name required";
-        if (v.length < 6) return "Minimum 6 characters";
-        if (!RegExp(r'^[a-zA-Z ]+$').hasMatch(v)) return "Only letters allowed";
-        return null;
-      },
-    );
-  }
-
-  Widget _emailField() {
-    return _field(
-      "Email Address",
-      _email,
-      Icons.email,
-      validator: (v) {
-        if (v == null || v.isEmpty) return "Email required";
-        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return "Enter valid email";
-        return null;
-      },
-    );
-  }
-
-  Widget _deptField() {
-    return _field(
-      "Department",
-      _branch,
-      Icons.apartment,
-      validator: (v) {
-        if (v == null || v.isEmpty) return "Department required";
-        if (v.length < 3) return "Minimum 3 characters";
-        return null;
-      },
-    );
-  }
-
-  Widget _passwordField() {
-    return _field(
-      "Password",
-      _pass,
-      Icons.lock,
-      isPass: true,
-      validator: (v) {
-        if (v == null || v.isEmpty) return "Password required";
-        if (v.length < 6) return "Minimum 6 characters";
-        if (!RegExp(r'(?=.*[A-Z])').hasMatch(v)) return "Must contain uppercase letter";
-        if (!RegExp(r'(?=.*[a-z])').hasMatch(v)) return "Must contain lowercase letter";
-        if (!RegExp(r'(?=.*[0-9])').hasMatch(v)) return "Must contain number";
-        if (!RegExp(r'(?=.*[!@#$%^&*(),.?":{}|<>])').hasMatch(v)) return "Must contain special character";
-        return null;
-      },
-    );
-  }
-
-  Widget _field(
-      String label,
-      TextEditingController controller,
-      IconData icon, {
-        bool isPass = false,
-        String? Function(String?)? validator,
-      }) {
+  Widget _field(String label, TextEditingController controller, IconData icon,
+      {bool isPass = false, Widget? suffixIcon, String? Function(String?)? validator}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -421,13 +445,11 @@ class _AddCoordinatorSheetState extends State<AddCoordinatorSheet> {
           validator: validator,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 20),
+            suffixIcon: suffixIcon,
             hintText: "Enter $label",
             filled: true,
             fillColor: Colors.grey.withOpacity(0.05),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
           ),
         ),
         const SizedBox(height: 16),

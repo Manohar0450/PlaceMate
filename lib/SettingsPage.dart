@@ -1,44 +1,70 @@
 import 'package:flutter/material.dart';
-import 'DevelopmentTeamPage.dart'; // Ensure this matches your file name
+import 'package:placemate/AboutAppPage.dart';
+import 'ChangePasswordPage.dart';
+import 'DevelopmentTeamPage.dart';
+import 'NotificationPage.dart';
+import 'account_info_page.dart';
+import 'session_manager.dart';
+import 'SplashScreen.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  final String userId;
+  final String userRole; // "principal", "coordinator", or "student"
 
-  // Reusable "Coming Soon" Dialog
-  void _showComingSoonDialog(BuildContext context) {
-    showDialog(
+  const SettingsPage({
+    super.key,
+    required this.userId,
+    required this.userRole,
+  });
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          title: const Text("Coming Soon", style: TextStyle(fontWeight: FontWeight.bold)),
-          content: const Text(
-            "This feature is under development and will be available soon.",
-            style: TextStyle(color: Colors.grey),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).cardColor,
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text("Logout",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+          "Are you sure you want to logout?",
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "OK",
-                style: TextStyle(color: Color(0xFF6C9EFF), fontWeight: FontWeight.bold),
-              ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              "Logout",
+              style: TextStyle(
+                  color: Colors.redAccent, fontWeight: FontWeight.bold),
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
+
+    if (confirmed == true && context.mounted) {
+      await SessionManager.clearSession();
+
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => SplashScreen()),
+              (route) => false,
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      // appBar: AppBar(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -50,23 +76,47 @@ class SettingsPage extends StatelessWidget {
               Icons.person_outline,
               "Account Information",
               "View your profile details",
-              onTap: () => _showComingSoonDialog(context),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AccountInfoPage(
+                    userId: userId,
+                    userRole: userRole,
+                  ),
+                ),
+              ),
             ),
             _settingsTile(
               theme,
               Icons.lock_outline,
               "Change Password",
               "Update your security credentials",
-              onTap: () => _showComingSoonDialog(context),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangePasswordPage(
+                    userId: userId,
+                    userRole: userRole,
+                  ),
+                ),
+              ),
             ),
             _settingsTile(
               theme,
               Icons.notifications_none,
               "Notifications",
-              "Manage notification preferences",
-              onTap: () => _showComingSoonDialog(context),
+              "View your recent notifications",
+              // ✅ Now passing userId and userRole — required by the new NotificationPage
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationPage(
+                    userId: userId,
+                    userRole: userRole,
+                  ),
+                ),
+              ),
             ),
-
             const SizedBox(height: 32),
             _sectionLabel("App"),
             _settingsTile(
@@ -76,34 +126,21 @@ class SettingsPage extends StatelessWidget {
               "Meet the development team",
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const DevelopmentTeamPage()),
+                MaterialPageRoute(
+                    builder: (_) => const DevelopmentTeamPage()),
               ),
-            ),
-            _settingsTile(
-              theme,
-              Icons.shield_outlined,
-              "Privacy Policy",
-              "View our privacy policy",
-              onTap: () => _showComingSoonDialog(context),
-            ),
-            _settingsTile(
-              theme,
-              Icons.description_outlined,
-              "Terms of Service",
-              "Read terms and conditions",
-              onTap: () => _showComingSoonDialog(context),
             ),
             _settingsTile(
               theme,
               Icons.info_outline,
               "About App",
               "Version and app information",
-              onTap: () => _showComingSoonDialog(context),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutAppPage()),
+              ),
             ),
-
             const SizedBox(height: 40),
-
-            // Logout Button
             _logoutButton(context),
           ],
         ),
@@ -113,10 +150,14 @@ class SettingsPage extends StatelessWidget {
 
   Widget _sectionLabel(String text) => Padding(
     padding: const EdgeInsets.only(left: 4, bottom: 12),
-    child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+    child: Text(text,
+        style: const TextStyle(
+            fontWeight: FontWeight.bold, color: Colors.grey)),
   );
 
-  Widget _settingsTile(ThemeData theme, IconData icon, String title, String sub, {VoidCallback? onTap}) {
+  Widget _settingsTile(
+      ThemeData theme, IconData icon, String title, String sub,
+      {VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -126,7 +167,8 @@ class SettingsPage extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -135,9 +177,12 @@ class SettingsPage extends StatelessWidget {
           ),
           child: Icon(icon, color: theme.colorScheme.primary, size: 22),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+        title:
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(sub,
+            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        trailing:
+        const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
       ),
     );
   }
@@ -147,15 +192,17 @@ class SettingsPage extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+        onPressed: () => _handleLogout(context),
         icon: const Icon(Icons.logout, color: Colors.redAccent),
         label: const Text(
           "Logout",
-          style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: Colors.redAccent, fontWeight: FontWeight.bold),
         ),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Colors.redAccent, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
         ),
       ),
     );

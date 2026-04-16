@@ -18,7 +18,6 @@ class ApiService {
         final data = jsonDecode(response.body);
         final prefs = await SharedPreferences.getInstance();
 
-        // Save the 'principal' object from your Node.js response
         await prefs.setString('user_data', jsonEncode(data['principal']));
         return true;
       }

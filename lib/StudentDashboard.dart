@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'PlacementCard.dart';
 import 'StudentHomeScreen.dart';
 import 'SPlacementsPage.dart';
 import 'SettingsPage.dart';
-import 'package:placemate/PlacementCard.dart'; // Ensure this file exists and takes studentData
 
 class StudentDashboard extends StatefulWidget {
   final Map<String, dynamic> studentData;
@@ -20,12 +20,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
   String get studentName => widget.studentData['name'] ?? "Student";
   String get studentId => widget.studentData['rollId'] ?? "0000";
 
-  // Pages list using the getter to pass data and maintain state
+  // --- UPDATED GETTER: Passing rollId and userRole to Settings ---
   List<Widget> get _pages => [
     StudentHomeScreen(studentData: widget.studentData), // Tab 0
     ApplyPage(studentData: widget.studentData),         // Tab 1: Now integrated
-    const SPlacementsPage(),                            // Tab 2: Live Job List
-    const SettingsPage(),                               // Tab 3: Settings
+    const SPlacementsPage(),                            // Tab 2
+
+    // Updated: Passing rollId as userId and setting role to "student"
+    SettingsPage(
+        userId: studentId,
+        userRole: "student"
+    ),                                                 // Tab 3
   ];
 
   @override

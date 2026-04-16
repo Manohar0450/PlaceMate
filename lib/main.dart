@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:placemate/DevelopmentTeamPage.dart';
+import 'session_manager.dart';
 import 'SplashScreen.dart';
+import 'PrincipalDashboard.dart';
+import 'CoordinatorDashboard.dart';
+import 'StudentDashboard.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,13 +19,90 @@ class MyApp extends StatelessWidget {
       theme: _lightTheme,
       darkTheme: _darkTheme,
       themeMode: ThemeMode.system,
-      // home:  DevelopmentTeamPage(),
-      home:  SplashScreen(),
+      home: const AppEntryPoint(),
     );
   }
 }
 
-/* ---------------- LIGHT THEME ---------------- */
+/// Checks saved session and routes to the correct screen without flashing
+/// the login page when the user is already logged in.
+class AppEntryPoint extends StatefulWidget {
+  const AppEntryPoint({super.key});
+
+  @override
+  State<AppEntryPoint> createState() => _AppEntryPointState();
+}
+
+class _AppEntryPointState extends State<AppEntryPoint> {
+  @override
+  void initState() {
+    super.initState();
+    _redirect();
+  }
+
+  Future<void> _redirect() async {
+    final loggedIn = await SessionManager.isLoggedIn();
+
+    if (!loggedIn || !mounted) {
+      // No saved session → show normal splash/login flow
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => SplashScreen()),
+      );
+      return;
+    }
+
+    final role = await SessionManager.getSavedRole();
+    final userId = await SessionManager.getSavedUserId();
+    final userData = await SessionManager.getSavedUserData();
+
+    if (role == null || userId == null || userData == null || !mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => SplashScreen()),
+      );
+      return;
+    }
+
+    Widget destination;
+
+    switch (role) {
+      case 'principal':
+        destination = PrincipalDashboard(
+          name: userData['name'] ?? 'Principal',
+          principalId: userId,
+        );
+        break;
+      case 'coordinator':
+        destination = CoordinatorDashboard(
+          name: userData['name'] ?? 'Coordinator',
+          coordinatorId: userId,
+          email: userData['email'] ?? '',
+        );
+        break;
+      case 'student':
+        destination = StudentDashboard(studentData: userData);
+        break;
+      default:
+        destination = SplashScreen();
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Blank screen while checking session (SplashScreen handles its own animation)
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+/* ─────────────────────────  LIGHT THEME  ───────────────────────────────── */
 
 final ThemeData _lightTheme = ThemeData(
   brightness: Brightness.light,
@@ -35,22 +115,21 @@ final ThemeData _lightTheme = ThemeData(
   ),
   scaffoldBackgroundColor: const Color(0xFFF6F8FC),
   cardColor: Colors.white,
-
-  // Set every text style to w900 (Extra Bold)
   textTheme: const TextTheme(
     titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
     titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.black),
-    bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF6B7280), fontWeight: FontWeight.w900),
-    bodySmall: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w900),
+    bodyLarge:
+    TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.black),
+    bodyMedium: TextStyle(
+        fontSize: 14, color: Color(0xFF6B7280), fontWeight: FontWeight.w900),
+    bodySmall: TextStyle(
+        fontSize: 12, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w900),
     labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
   ),
-
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: Colors.white,
     prefixIconColor: const Color(0xFF6B7280),
-    // Ensures hint text is also bold
     hintStyle: const TextStyle(fontWeight: FontWeight.w900),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
@@ -65,16 +144,15 @@ final ThemeData _lightTheme = ThemeData(
       borderSide: const BorderSide(color: Color(0xFF3B82F6)),
     ),
   ),
-
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
       backgroundColor: const Color(0xFF3B82F6),
       foregroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+      textStyle:
+      const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
     ),
   ),
-
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
       foregroundColor: Colors.black,
@@ -85,7 +163,7 @@ final ThemeData _lightTheme = ThemeData(
   ),
 );
 
-/* ---------------- DARK THEME ---------------- */
+/* ─────────────────────────  DARK THEME  ────────────────────────────────── */
 
 final ThemeData _darkTheme = ThemeData(
   brightness: Brightness.dark,
@@ -98,16 +176,17 @@ final ThemeData _darkTheme = ThemeData(
   ),
   scaffoldBackgroundColor: const Color(0xFF0B1220),
   cardColor: const Color(0xFF111827),
-
   textTheme: const TextTheme(
     titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
     titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
-    bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w900),
-    bodySmall: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w900),
+    bodyLarge:
+    TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+    bodyMedium: TextStyle(
+        fontSize: 14, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w900),
+    bodySmall: TextStyle(
+        fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w900),
     labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
   ),
-
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: const Color(0xFF111827),
@@ -126,16 +205,15 @@ final ThemeData _darkTheme = ThemeData(
       borderSide: const BorderSide(color: Color(0xFF6C9EFF)),
     ),
   ),
-
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
       backgroundColor: const Color(0xFF6C9EFF),
       foregroundColor: Colors.black,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+      textStyle:
+      const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
     ),
   ),
-
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
       foregroundColor: Colors.white,

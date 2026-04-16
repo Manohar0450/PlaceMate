@@ -47,7 +47,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     AIProcessingScreen(coordinatorId: widget.coordinatorId),
 
     // Index 3: Settings
-    const SettingsPage(),
+     SettingsPage(userId: widget.coordinatorId, userRole: "coordinator"),
   ];
 
   @override
