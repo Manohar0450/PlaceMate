@@ -258,7 +258,9 @@
 // }
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+// import 'help_page.dart';
 import 'dart:convert';
+import 'package:placemate/HelpAndCommunityScreen.dart';
 import 'app_theme.dart';
 import 'PrincipalRegistrationScreen.dart';
 import 'PrincipalDashboard.dart';
@@ -288,8 +290,10 @@ class _PrincipalLoginScreenState extends State<PrincipalLoginScreen> {
     if (!RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$&*~]).{8,}$').hasMatch(password)) {
       _showError("Invalid password format."); return;
     }
-    showDialog(context: context, barrierDismissible: false,
-        builder: (_) => const LoadingScreen(message: "Verifying Credentials..."));
+    showDialog(
+      context: context, barrierDismissible: false,
+      builder: (_) => const LoadingScreen(message: "Verifying Credentials..."),
+    );
     try {
       final res = await http.post(
         Uri.parse('https://placemate-backend-coral.vercel.app/login'),
@@ -323,40 +327,62 @@ class _PrincipalLoginScreenState extends State<PrincipalLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppWidgets.screenShell(child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AppWidgets.backAndBadge(
-          context: context, badgeLabel: 'Principal',
-          badgeColor: AppColors.gold, onBack: () => Navigator.pop(context),
-        ),
-        const SizedBox(height: 28),
-        AppWidgets.headline('Welcome', 'back.', AppColors.gold),
-        const SizedBox(height: 8),
-        const Text('Sign in to access your analytics dashboard.',
-            style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.5)),
-        const SizedBox(height: 28),
-        AppWidgets.fieldLabel('Email address'),
-        AppWidgets.inputField(icon: Icons.mail_outline_rounded, hint: 'principal@gmail.com', controller: _emailCtrl),
-        AppWidgets.fieldLabel('Password'),
-        AppWidgets.inputField(
-          icon: Icons.lock_outline_rounded, hint: '••••••••••',
-          obscure: _obscure, controller: _passCtrl,
-          suffix: IconButton(
-            icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                color: AppColors.muted, size: 18),
-            onPressed: () => setState(() => _obscure = !_obscure),
+    return AppWidgets.screenShell(
+      context: context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppWidgets.backAndBadge(
+            context: context, badgeLabel: 'Principal',
+            badgeColor: AppColors.gold, onBack: () => Navigator.pop(context),
           ),
-        ),
-        const SizedBox(height: 8),
-        AppWidgets.primaryButton('Sign in', AppColors.gold, _handleLogin),
-        const SizedBox(height: 12),
-        AppWidgets.secondaryButton('Register as Principal', AppColors.gold, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const PrincipalRegisterScreen()));
-        }),
-        const SizedBox(height: 24),
-        AppWidgets.footerNote('Forgot password? ', 'Contact C7', null),
-      ],
-    ));
+          const SizedBox(height: 28),
+          AppWidgets.headline(context, 'Welcome', 'back.', AppColors.gold),
+          const SizedBox(height: 8),
+          Text(
+            'Sign in to access your analytics dashboard.',
+            style: TextStyle(fontSize: 13, color: AppColors.muted(context), height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          AppWidgets.fieldLabel(context, 'Email address'),
+          AppWidgets.inputField(context,
+              icon: Icons.mail_outline_rounded,
+              hint: 'principal@gmail.com',
+              controller: _emailCtrl),
+          AppWidgets.fieldLabel(context, 'Password'),
+          AppWidgets.inputField(context,
+            icon: Icons.lock_outline_rounded, hint: '••••••••••',
+            obscure: _obscure, controller: _passCtrl,
+            suffix: IconButton(
+              icon: Icon(
+                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                color: AppColors.muted(context), size: 18,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+          ),
+          const SizedBox(height: 8),
+          AppWidgets.primaryButton('Sign in', AppColors.gold, _handleLogin),
+          const SizedBox(height: 12),
+          AppWidgets.secondaryButton('Register as Principal', AppColors.gold, () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PrincipalRegisterScreen()));
+          }),
+          const SizedBox(height: 24),
+          AppWidgets.footerNote(
+            context,
+            'Forgot password? ',
+            'Contact C7',
+                () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpAndCommunityScreen()),
+              );
+            },
+          ),
+          // AppWidgets.footerNote(context, 'Forgot password? ', 'Contact C7', null),
+        ],
+      ),
+    );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:placemate/AboutAppPage.dart';
+import 'package:placemate/Game%20home.dart';
 import 'ChangePasswordPage.dart';
 import 'DevelopmentTeamPage.dart';
+import 'HelpAndCommunityScreen.dart';
 import 'NotificationPage.dart';
 import 'account_info_page.dart';
 import 'session_manager.dart';
@@ -140,6 +142,27 @@ class SettingsPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const AboutAppPage()),
               ),
             ),
+          _settingsTile(
+            theme,
+            Icons.help_outline_rounded,
+            "Help & Community",
+            "Support and FAQs",
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HelpAndCommunityScreen()),
+            ),
+          ),
+            _settingsTile(
+              theme,
+              Icons.games_rounded,
+              "Tic Tac Toe",
+              "Play classic XO game",
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const Home()),
+              ),
+            ),
+
             const SizedBox(height: 40),
             _logoutButton(context),
           ],

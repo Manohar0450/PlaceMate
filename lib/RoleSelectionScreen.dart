@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:placemate/CoordinatorLoginScreen.dart';
 import 'package:placemate/StudentLoginScreen.dart';
 import 'PrincipalLoginScreen.dart';
+import 'app_theme.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0C0F1A),
+      backgroundColor: AppColors.bg(context),
       body: Stack(
         children: [
           // Ambient orb — top right
@@ -20,7 +23,7 @@ class RoleSelectionScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
-                  const Color(0xFF6C8EFF).withOpacity(0.18),
+                  AppColors.blue.withOpacity(isDark ? 0.18 : 0.12),
                   Colors.transparent,
                 ]),
               ),
@@ -34,7 +37,7 @@ class RoleSelectionScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
-                  const Color(0xFFA78BFA).withOpacity(0.14),
+                  AppColors.purple.withOpacity(isDark ? 0.14 : 0.10),
                   Colors.transparent,
                 ]),
               ),
@@ -51,8 +54,8 @@ class RoleSelectionScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6C8EFF).withOpacity(0.12),
-                      border: Border.all(color: const Color(0xFF6C8EFF).withOpacity(0.25)),
+                      color: AppColors.blue.withOpacity(0.12),
+                      border: Border.all(color: AppColors.blue.withOpacity(0.25)),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -61,7 +64,7 @@ class RoleSelectionScreen extends StatelessWidget {
                         Container(
                           width: 6, height: 6,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF6C8EFF), shape: BoxShape.circle,
+                            color: AppColors.blue, shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -69,7 +72,7 @@ class RoleSelectionScreen extends StatelessWidget {
                           'PlaceMate  ·  v2.0',
                           style: TextStyle(
                             fontSize: 11, fontWeight: FontWeight.w500,
-                            color: Color(0xFF6C8EFF), letterSpacing: 0.05,
+                            color: AppColors.blue, letterSpacing: 0.05,
                           ),
                         ),
                       ],
@@ -78,25 +81,32 @@ class RoleSelectionScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   // Headline
                   RichText(
-                    text: const TextSpan(
+                    text: TextSpan(
                       style: TextStyle(
                         fontFamily: 'DMSerifDisplay',
-                        fontSize: 36, color: Color(0xFFF0F2FF), height: 1.15,
+                        fontSize: 36,
+                        color: AppColors.text(context),
+                        height: 1.15,
                       ),
-                      children: [
+                      children: const [
                         TextSpan(text: 'Who are\nyou '),
                         TextSpan(
                           text: 'today?',
-                          style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF6C8EFF)),
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.blue,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'Your role shapes everything — your dashboard,\nyour tools, your view of what matters.',
                     style: TextStyle(
-                      fontSize: 14, color: Color(0xFF7B82A8), height: 1.6,
+                      fontSize: 14,
+                      color: AppColors.muted(context),
+                      height: 1.6,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -106,8 +116,8 @@ class RoleSelectionScreen extends StatelessWidget {
                     title: 'Principal',
                     tag: 'Admin',
                     subtitle: 'Analytics, coordinator oversight & risk overview',
-                    iconColor: const Color(0xFFF4C06F),
-                    tagColor: const Color(0xFFF4C06F),
+                    iconColor: AppColors.gold,
+                    tagColor: AppColors.gold,
                     onTap: () => Navigator.push(context,
                         MaterialPageRoute(builder: (_) => const PrincipalLoginScreen())),
                   ),
@@ -117,8 +127,8 @@ class RoleSelectionScreen extends StatelessWidget {
                     title: 'Coordinator',
                     tag: 'Manager',
                     subtitle: 'Students, postings & placement pipeline',
-                    iconColor: const Color(0xFF6C8EFF),
-                    tagColor: const Color(0xFF6C8EFF),
+                    iconColor: AppColors.blue,
+                    tagColor: AppColors.blue,
                     onTap: () => Navigator.push(context,
                         MaterialPageRoute(builder: (_) => const CoordinatorLoginScreen())),
                   ),
@@ -128,21 +138,21 @@ class RoleSelectionScreen extends StatelessWidget {
                     title: 'Student',
                     tag: 'Learner',
                     subtitle: 'Eligibility, applications & placement updates',
-                    iconColor: const Color(0xFFA78BFA),
-                    tagColor: const Color(0xFFA78BFA),
+                    iconColor: AppColors.purple,
+                    tagColor: AppColors.purple,
                     onTap: () => Navigator.push(context,
                         MaterialPageRoute(builder: (_) => const StudentLoginScreen())),
                   ),
                   const SizedBox(height: 32),
                   Center(
                     child: RichText(
-                      text: const TextSpan(
-                        style: TextStyle(fontSize: 12, color: Color(0xFF7B82A8)),
-                        children: [
+                      text: TextSpan(
+                        style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
+                        children: const [
                           TextSpan(text: 'You can change this later in '),
                           TextSpan(
                             text: 'Settings →',
-                            style: TextStyle(color: Color(0xFF6C8EFF)),
+                            style: TextStyle(color: AppColors.blue),
                           ),
                         ],
                       ),
@@ -182,6 +192,18 @@ class _RoleCardState extends State<_RoleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Card surfaces — dark uses the original deep navy tones,
+    // light uses white/off-white with a soft shadow instead
+    final cardNormal  = isDark ? const Color(0xFF13172A) : Colors.white;
+    final cardPressed = isDark ? const Color(0xFF1A1F35) : const Color(0xFFEDF0FF);
+    final borderNormal  = AppColors.blue.withOpacity(isDark ? 0.15 : 0.18);
+    final borderPressed = widget.iconColor.withOpacity(0.35);
+    final chevronBg = isDark
+        ? Colors.white.withOpacity(0.05)
+        : AppColors.blue.withOpacity(0.07);
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _hovered = true),
       onTapUp: (_) { setState(() => _hovered = false); widget.onTap(); },
@@ -191,13 +213,20 @@ class _RoleCardState extends State<_RoleCard> {
         transform: Matrix4.identity()..scale(_hovered ? 0.97 : 1.0),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _hovered ? const Color(0xFF1A1F35) : const Color(0xFF13172A),
+          color: _hovered ? cardPressed : cardNormal,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: _hovered
-                ? widget.iconColor.withOpacity(0.35)
-                : const Color(0xFF6C8EFF).withOpacity(0.15),
+            color: _hovered ? borderPressed : borderNormal,
           ),
+          boxShadow: isDark
+              ? null
+              : [
+            BoxShadow(
+              color: AppColors.blue.withOpacity(_hovered ? 0.10 : 0.06),
+              blurRadius: _hovered ? 16 : 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -218,9 +247,9 @@ class _RoleCardState extends State<_RoleCard> {
                   Row(children: [
                     Text(
                       widget.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w600,
-                        color: Color(0xFFF0F2FF),
+                        color: AppColors.text(context),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -242,7 +271,11 @@ class _RoleCardState extends State<_RoleCard> {
                   const SizedBox(height: 4),
                   Text(
                     widget.subtitle,
-                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF7B82A8), height: 1.5),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.muted(context),
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -251,10 +284,14 @@ class _RoleCardState extends State<_RoleCard> {
             Container(
               width: 24, height: 24,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: chevronBg,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.chevron_right, color: Color(0xFF7B82A8), size: 16),
+              child: Icon(
+                Icons.chevron_right,
+                color: AppColors.muted(context),
+                size: 16,
+              ),
             ),
           ],
         ),

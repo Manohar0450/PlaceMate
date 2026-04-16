@@ -216,6 +216,7 @@
 //     ),
 //   );
 // }
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -232,17 +233,22 @@ class StudentLoginScreen extends StatefulWidget {
 
 class _StudentLoginScreenState extends State<StudentLoginScreen> {
   bool _obscure = true;
-  final _idCtrl = TextEditingController();
+  final _idCtrl   = TextEditingController();
   final _passCtrl = TextEditingController();
 
   @override
   void dispose() { _idCtrl.dispose(); _passCtrl.dispose(); super.dispose(); }
 
   Future<void> _handleLogin() async {
-    final rollId = _idCtrl.text.trim(); final password = _passCtrl.text;
-    if (rollId.isEmpty || password.isEmpty) { _showError("Please enter your Roll ID and Password."); return; }
-    showDialog(context: context, barrierDismissible: false,
-        builder: (_) => const LoadingScreen(message: "Verifying Student..."));
+    final rollId   = _idCtrl.text.trim();
+    final password = _passCtrl.text;
+    if (rollId.isEmpty || password.isEmpty) {
+      _showError("Please enter your Roll ID and Password."); return;
+    }
+    showDialog(
+      context: context, barrierDismissible: false,
+      builder: (_) => const LoadingScreen(message: "Verifying Student..."),
+    );
     try {
       final res = await http.post(
         Uri.parse('https://placemate-backend-coral.vercel.app/student/login'),
@@ -252,11 +258,18 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (mounted) Navigator.pop(context);
       if (res.statusCode == 200) {
         final student = jsonDecode(res.body)['student'] as Map<String, dynamic>;
-        await SessionManager.saveSession(userData: student, role: 'student', userId: student['rollId'] ?? rollId);
+        await SessionManager.saveSession(
+            userData: student, role: 'student',
+            userId: student['rollId'] ?? rollId);
         if (mounted) Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (_) => StudentDashboard(studentData: student)));
-      } else { _showError(jsonDecode(res.body)['error'] ?? "Login failed."); }
-    } catch (_) { if (mounted) Navigator.pop(context); _showError("Connection failed."); }
+      } else {
+        _showError(jsonDecode(res.body)['error'] ?? "Login failed.");
+      }
+    } catch (_) {
+      if (mounted) Navigator.pop(context);
+      _showError("Connection failed.");
+    }
   }
 
   void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -266,33 +279,47 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   ));
 
   @override
-  Widget build(BuildContext context) => AppWidgets.screenShell(child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      AppWidgets.backAndBadge(context: context, badgeLabel: 'Student',
-          badgeColor: AppColors.purple, onBack: () => Navigator.pop(context)),
-      const SizedBox(height: 28),
-      AppWidgets.headline('Welcome', 'back.', AppColors.purple),
-      const SizedBox(height: 8),
-      const Text('Sign in to track your placement journey.',
-          style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.5)),
-      const SizedBox(height: 28),
-      AppWidgets.fieldLabel('Roll number / ID'),
-      AppWidgets.inputField(icon: Icons.badge_outlined, hint: 'e.g. 22CS101', controller: _idCtrl),
-      AppWidgets.fieldLabel('Password'),
-      AppWidgets.inputField(
-        icon: Icons.lock_outline_rounded, hint: '••••••••••',
-        obscure: _obscure, controller: _passCtrl,
-        suffix: IconButton(
-          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: AppColors.muted, size: 18),
-          onPressed: () => setState(() => _obscure = !_obscure),
-        ),
+  Widget build(BuildContext context) {
+    return AppWidgets.screenShell(
+      context: context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppWidgets.backAndBadge(
+            context: context, badgeLabel: 'Student',
+            badgeColor: AppColors.purple, onBack: () => Navigator.pop(context),
+          ),
+          const SizedBox(height: 28),
+          AppWidgets.headline(context, 'Welcome', 'back.', AppColors.purple),
+          const SizedBox(height: 8),
+          Text(
+            'Sign in to track your placement journey.',
+            style: TextStyle(fontSize: 13, color: AppColors.muted(context), height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          AppWidgets.fieldLabel(context, 'Roll number / ID'),
+          AppWidgets.inputField(context,
+              icon: Icons.badge_outlined,
+              hint: 'e.g. 22CS101',
+              controller: _idCtrl),
+          AppWidgets.fieldLabel(context, 'Password'),
+          AppWidgets.inputField(context,
+            icon: Icons.lock_outline_rounded, hint: '••••••••••',
+            obscure: _obscure, controller: _passCtrl,
+            suffix: IconButton(
+              icon: Icon(
+                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                color: AppColors.muted(context), size: 18,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+          ),
+          const SizedBox(height: 8),
+          AppWidgets.primaryButton('Sign in', AppColors.purple, _handleLogin),
+          const SizedBox(height: 24),
+          AppWidgets.footerNote(context, 'Forgot password? ', 'Contact Coordinator', null),
+        ],
       ),
-      const SizedBox(height: 8),
-      AppWidgets.primaryButton('Sign in', AppColors.purple, _handleLogin),
-      const SizedBox(height: 24),
-      AppWidgets.footerNote('Forgot password? ', 'Contact Coordinator', null),
-    ],
-  ));
+    );
+  }
 }

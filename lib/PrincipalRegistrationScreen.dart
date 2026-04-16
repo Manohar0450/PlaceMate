@@ -338,6 +338,8 @@
 // }
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'app_theme.dart';
 
@@ -348,11 +350,11 @@ class PrincipalRegisterScreen extends StatefulWidget {
 }
 
 class _PrincipalRegisterScreenState extends State<PrincipalRegisterScreen> {
-  final _nameCtrl = TextEditingController();
+  final _nameCtrl  = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
+  final _passCtrl  = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _instCtrl = TextEditingController();
+  final _instCtrl  = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
 
@@ -363,29 +365,50 @@ class _PrincipalRegisterScreenState extends State<PrincipalRegisterScreen> {
   }
 
   Future<void> _handleRegister() async {
-    final name = _nameCtrl.text.trim(); final email = _emailCtrl.text.trim();
-    final pass = _passCtrl.text; final phone = _phoneCtrl.text.trim();
-    final inst = _instCtrl.text.trim();
-    if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(name)) { _showError("Name must be at least 3 letters."); return; }
-    if (!RegExp(r"^[a-zA-Z0-9.]+@gmail\.com$").hasMatch(email)) { _showError("Use a valid @gmail.com address."); return; }
-    if (!RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$&*~]).{8,}$').hasMatch(pass)) { _showError("Password needs uppercase, lowercase, number & special char."); return; }
-    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) { _showError("Phone must be exactly 10 digits."); return; }
-    if (!RegExp(r'^[a-zA-Z0-9\s]{3,}$').hasMatch(inst)) { _showError("Institution must be at least 3 characters."); return; }
+    final name  = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final pass  = _passCtrl.text;
+    final phone = _phoneCtrl.text.trim();
+    final inst  = _instCtrl.text.trim();
+
+    if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(name)) {
+      _showError("Name must be at least 3 letters."); return;
+    }
+    if (!RegExp(r"^[a-zA-Z0-9.]+@gmail\.com$").hasMatch(email)) {
+      _showError("Use a valid @gmail.com address."); return;
+    }
+    if (!RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$&*~]).{8,}$').hasMatch(pass)) {
+      _showError("Password needs uppercase, lowercase, number & special char."); return;
+    }
+    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+      _showError("Phone must be exactly 10 digits."); return;
+    }
+    if (!RegExp(r'^[a-zA-Z0-9\s]{3,}$').hasMatch(inst)) {
+      _showError("Institution must be at least 3 characters."); return;
+    }
+
     setState(() => _loading = true);
     try {
       final res = await http.post(
         Uri.parse('https://placemate-backend-coral.vercel.app/register'),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"name": name, "email": email, "password": pass, "phone": phone, "institution": inst}),
+        body: jsonEncode({
+          "name": name, "email": email, "password": pass,
+          "phone": phone, "institution": inst,
+        }),
       );
       setState(() => _loading = false);
       if (res.statusCode == 201) {
         if (!mounted) return;
-        Navigator.push(context, MaterialPageRoute(builder: (_) => OtpVerificationScreen(email: email)));
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => OtpVerificationScreen(email: email)));
       } else {
         _showError(jsonDecode(res.body)['error'] ?? "Registration failed.");
       }
-    } catch (_) { setState(() => _loading = false); _showError("Connection failed."); }
+    } catch (_) {
+      setState(() => _loading = false);
+      _showError("Connection failed.");
+    }
   }
 
   void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -395,75 +418,97 @@ class _PrincipalRegisterScreenState extends State<PrincipalRegisterScreen> {
   ));
 
   @override
-  Widget build(BuildContext context) => AppWidgets.screenShell(child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.blue.withOpacity(0.1),
-              border: Border.all(color: AppColors.blue.withOpacity(0.2)),
-              borderRadius: BorderRadius.circular(20),
+  Widget build(BuildContext context) {
+    return AppWidgets.screenShell(
+      context: context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row — back + badge (manual since label differs from backAndBadge)
+          Row(children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.blue.withOpacity(0.1),
+                  border: Border.all(color: AppColors.blue.withOpacity(0.2)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.arrow_back, size: 14, color: AppColors.blue),
+                  SizedBox(width: 6),
+                  Text('Back', style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.blue)),
+                ]),
+              ),
             ),
-            child: const Row(children: [
-              Icon(Icons.arrow_back, size: 14, color: AppColors.blue),
-              SizedBox(width: 6),
-              Text('Back', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.blue)),
-            ]),
-          ),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.gold.withOpacity(0.1),
-            border: Border.all(color: AppColors.gold.withOpacity(0.2)),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(children: [
-            CircleAvatar(radius: 3, backgroundColor: AppColors.gold),
-            SizedBox(width: 6),
-            Text('New account', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.gold)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withOpacity(0.1),
+                border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(children: [
+                CircleAvatar(radius: 3, backgroundColor: AppColors.gold),
+                SizedBox(width: 6),
+                Text('New account', style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.gold)),
+              ]),
+            ),
           ]),
-        ),
-      ]),
-      const SizedBox(height: 28),
-      AppWidgets.headline('Create your', 'account.', AppColors.gold),
-      const SizedBox(height: 8),
-      const Text('Fill in the details to register as Principal.',
-          style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.5)),
-      const SizedBox(height: 28),
-      AppWidgets.fieldLabel('Full name'),
-      AppWidgets.inputField(icon: Icons.person_outline_rounded, hint: 'Dr. Ramesh Kumar', controller: _nameCtrl),
-      AppWidgets.fieldLabel('Email address'),
-      AppWidgets.inputField(icon: Icons.mail_outline_rounded, hint: 'principal@gmail.com', controller: _emailCtrl),
-      AppWidgets.fieldLabel('Password'),
-      AppWidgets.inputField(
-        icon: Icons.lock_outline_rounded, hint: '••••••••••',
-        obscure: _obscure, controller: _passCtrl,
-        suffix: IconButton(
-          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: AppColors.muted, size: 18),
-          onPressed: () => setState(() => _obscure = !_obscure),
-        ),
+          const SizedBox(height: 28),
+          AppWidgets.headline(context, 'Create your', 'account.', AppColors.gold),
+          const SizedBox(height: 8),
+          Text(
+            'Fill in the details to register as Principal.',
+            style: TextStyle(fontSize: 13, color: AppColors.muted(context), height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          AppWidgets.fieldLabel(context, 'Full name'),
+          AppWidgets.inputField(context,
+              icon: Icons.person_outline_rounded,
+              hint: 'Dr. Ramesh Kumar',
+              controller: _nameCtrl),
+          AppWidgets.fieldLabel(context, 'Email address'),
+          AppWidgets.inputField(context,
+              icon: Icons.mail_outline_rounded,
+              hint: 'principal@gmail.com',
+              controller: _emailCtrl),
+          AppWidgets.fieldLabel(context, 'Password'),
+          AppWidgets.inputField(context,
+            icon: Icons.lock_outline_rounded, hint: '••••••••••',
+            obscure: _obscure, controller: _passCtrl,
+            suffix: IconButton(
+              icon: Icon(
+                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                color: AppColors.muted(context), size: 18,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+          ),
+          AppWidgets.fieldLabel(context, 'Phone number'),
+          AppWidgets.inputField(context,
+              icon: Icons.phone_outlined, hint: 'XXXXXXXXXX',
+              controller: _phoneCtrl, keyboardType: TextInputType.number),
+          AppWidgets.fieldLabel(context, 'Institution'),
+          AppWidgets.inputField(context,
+              icon: Icons.apartment_outlined,
+              hint: 'College / University',
+              controller: _instCtrl),
+          const SizedBox(height: 8),
+          _loading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
+              : AppWidgets.primaryButton('Create account', AppColors.gold, _handleRegister),
+        ],
       ),
-      AppWidgets.fieldLabel('Phone number'),
-      AppWidgets.inputField(icon: Icons.phone_outlined, hint: 'XXXXXXXXXX',
-          controller: _phoneCtrl, keyboardType: TextInputType.number),
-      AppWidgets.fieldLabel('Institution'),
-      AppWidgets.inputField(icon: Icons.apartment_outlined, hint: 'College / University', controller: _instCtrl),
-      const SizedBox(height: 8),
-      _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
-          : AppWidgets.primaryButton('Create account', AppColors.gold, _handleRegister),
-    ],
-  ));
+    );
+  }
 }
 
-// ── OTP Verification ──────────────────────────────────────────
+// ── OTP Verification ──────────────────────────────────────────────────────────
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -494,79 +539,96 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       } else {
         _showStatus(jsonDecode(res.body)['error'] ?? "Verification failed.", Colors.redAccent);
       }
-    } catch (_) { setState(() => _loading = false); _showStatus("Connection failed.", Colors.redAccent); }
+    } catch (_) {
+      setState(() => _loading = false);
+      _showStatus("Connection failed.", Colors.redAccent);
+    }
   }
 
   void _showStatus(String msg, Color c) => ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: c, behavior: SnackBarBehavior.floating));
 
   @override
-  Widget build(BuildContext context) => AppWidgets.screenShell(child: Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Align(alignment: Alignment.centerLeft,
-        child: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+  Widget build(BuildContext context) {
+    return AppWidgets.screenShell(
+      context: context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.blue.withOpacity(0.1),
+                  border: Border.all(color: AppColors.blue.withOpacity(0.2)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.arrow_back, size: 14, color: AppColors.blue),
+                  SizedBox(width: 6),
+                  Text('Back', style: TextStyle(
+                      fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Container(
+            width: 64, height: 64,
             decoration: BoxDecoration(
               color: AppColors.blue.withOpacity(0.1),
               border: Border.all(color: AppColors.blue.withOpacity(0.2)),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.arrow_back, size: 14, color: AppColors.blue),
-              SizedBox(width: 6),
-              Text('Back', style: TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w500)),
-            ]),
+            child: const Icon(Icons.mark_email_unread_outlined,
+                color: AppColors.blue, size: 28),
           ),
-        ),
-      ),
-      const SizedBox(height: 32),
-      Container(
-        width: 64, height: 64,
-        decoration: BoxDecoration(
-          color: AppColors.blue.withOpacity(0.1),
-          border: Border.all(color: AppColors.blue.withOpacity(0.2)),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Icon(Icons.mark_email_unread_outlined, color: AppColors.blue, size: 28),
-      ),
-      const SizedBox(height: 20),
-      AppWidgets.headline('Check your', 'inbox.', AppColors.blue),
-      const SizedBox(height: 10),
-      Text('We sent a 6-digit code to\n${widget.email}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: AppColors.muted, height: 1.6)),
-      const SizedBox(height: 32),
-      Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: AppColors.inputBg,
-          border: Border.all(color: AppColors.blue.withOpacity(0.2)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: TextField(
-          controller: _otpCtrl,
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          maxLength: 6,
-          style: const TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 8),
-          decoration: const InputDecoration(
-            hintText: '· · · · · ·',
-            hintStyle: TextStyle(color: AppColors.muted, letterSpacing: 6),
-            border: InputBorder.none,
-            counterText: '',
-            contentPadding: EdgeInsets.symmetric(vertical: 12),
+          const SizedBox(height: 20),
+          AppWidgets.headline(context, 'Check your', 'inbox.', AppColors.blue),
+          const SizedBox(height: 10),
+          Text(
+            'We sent a 6-digit code to\n${widget.email}',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: AppColors.muted(context), height: 1.6),
           ),
-        ),
+          const SizedBox(height: 32),
+          Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: AppColors.inputBg(context),
+              border: Border.all(color: AppColors.blue.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: TextField(
+              controller: _otpCtrl,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              style: TextStyle(
+                color: AppColors.text(context), fontSize: 20,
+                fontWeight: FontWeight.w600, letterSpacing: 8,
+              ),
+              decoration: InputDecoration(
+                hintText: '· · · · · ·',
+                hintStyle: TextStyle(
+                    color: AppColors.muted(context), letterSpacing: 6),
+                border: InputBorder.none,
+                counterText: '',
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _loading
+              ? const CircularProgressIndicator(color: AppColors.blue)
+              : AppWidgets.primaryButton('Verify & activate', AppColors.blue, _handleVerify),
+          const SizedBox(height: 20),
+          AppWidgets.footerNote(context, "Didn't receive it? ", 'Resend code', null),
+        ],
       ),
-      const SizedBox(height: 20),
-      _loading
-          ? const CircularProgressIndicator(color: AppColors.blue)
-          : AppWidgets.primaryButton('Verify & activate', AppColors.blue, _handleVerify),
-      const SizedBox(height: 20),
-      AppWidgets.footerNote("Didn't receive it? ", 'Resend code', null),
-    ],
-  ));
+    );
+  }
 }
